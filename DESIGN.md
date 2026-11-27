@@ -115,3 +115,22 @@ the validation allow-list list the same extensions.
   replaces its chunks (embedding runs first, so a failure keeps the old
   data). Identical files share a `document_id`, so duplicates collapse.
 - **Open:** chunk size and overlap are defaults, not yet tuned by evaluation.
+## 9. Retrieval threshold and grounded answering
+- **Flow** (`app/qa.py`): embed question, search Qdrant, drop chunks below
+  `MIN_RELEVANCE_SCORE`, ask Gemini (`GEMINI_MODEL`, default
+  `gemini-3.8-flash`) with only those excerpts, validate the reply.
+- **Refusal** happens without calling the model when nothing passes the
+  threshold, and after the call when the model says the evidence is
+  insufficient, returns malformed output, or cites no retrieved excerpt.
+- **Citations** are excerpt numbers checked against the retrieved set, then
+  mapped to filename, page (None for DOCX) and chunk. Invalid numbers are
+  dropped. Limitation: this proves a citation points at a retrieved chunk,
+  not that the chunk truly supports the claim. Evaluation must measure that.
+- **Prompt injection:** excerpts are wrapped in tags and declared untrusted
+  data; closing tags inside document text are escaped. This reduces but does
+  not eliminate the risk.
+- **Failures:** HTTP 429 and 5xx from Gemini are retried with exponential
+  backoff, then raised as `LLMError`.
+- **Open:** `MIN_RELEVANCE_SCORE` (0.5), `TOP_K` (5), and the free-tier rate
+  limits are untuned defaults. The threshold must be set from evaluation data.
+  No BM25, hybrid retrieval or reranking yet.
