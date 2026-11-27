@@ -1,0 +1,26 @@
+# Secrets
+.env
+.env.*
+!.env.example
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+# Virtual environments
+.venv/
+venv/
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+# IDE
+.vscode/
+# OS
+.DS_Store
+Thumbs.db
+
+# Local data and notebooks
+data/uploads/
+data/qdrant_store/
+.ipynb_checkpoints/
+*.log
