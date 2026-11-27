@@ -101,3 +101,17 @@ the validation allow-list list the same extensions.
 - `validate_upload` and `ingest_document` are not yet wired into an API
   endpoint.
 - No OCR for scanned PDFs (by design, they are rejected).
+## 8. Chunking, embeddings and vector storage
+- **Chunking** (`app/chunking.py`): character windows (default 1000, overlap
+  200, configurable), broken at whitespace. Chunks never span pages, so each
+  keeps an exact `page_number` (None for DOCX). Chunk IDs are deterministic
+  UUIDs from document ID and index.
+- **Embeddings** (`app/embeddings.py`): `BAAI/bge-small-en-v1.5` (384 dims)
+  through `fastembed` (ONNX, reuses `onnxruntime`) instead of
+  `sentence-transformers`, which would add PyTorch (~2 GB). Dimension is
+  validated; blank text is rejected. BGE-M3 comparison is still open.
+- **Vector store** (`app/vector_store.py`): Qdrant local mode, cosine
+  distance, persisted in `data/qdrant` (git-ignored). Re-indexing a document
+  replaces its chunks (embedding runs first, so a failure keeps the old
+  data). Identical files share a `document_id`, so duplicates collapse.
+- **Open:** chunk size and overlap are defaults, not yet tuned by evaluation.
