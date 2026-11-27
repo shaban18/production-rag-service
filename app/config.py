@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     EMBEDDING_DIMENSION: int = 384
     QDRANT_PATH: str = "data/qdrant"
     QDRANT_COLLECTION: str = "documents"
+    GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-3.8-flash"
+    TOP_K: int = 5
+    MIN_RELEVANCE_SCORE: float = 0.5
 
     model_config = SettingsConfigDict(
         env_file=".env",
