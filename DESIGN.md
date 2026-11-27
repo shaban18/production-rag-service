@@ -62,7 +62,42 @@ Installing PyMuPDF 2.2 also pulled in `pymupdf_layout`, `pymupdf4llm`,
 the environment is reproducible. The loader only uses `page.get_text()`.
 **Open item:** test whether a leaner install works in a throwaway virtual
 environment before the embedding phase adds its own heavy dependencies.
-## 5. Known gaps
+## 5. DOCX extraction
+**Decision.** `python-docx` (MIT licence), via `app/ingestion/docx_loader.py`.
+A DOCX becomes a **single-page** `Document`, with
+`metadata["page_numbers"] == "unavailable"`.
+**Why single page.** A DOCX file has no fixed pages. Word computes
+pagination at render time and `python-docx` cannot reproduce it. Splitting on
+manual page breaks would miss automatic breaks, so the numbers would not match
+what Word shows. Wrong page citations are worse than none, so the citation
+layer must cite DOCX sources by filename only.
+**Extraction rules.**
+- Paragraphs and tables are extracted in document order.
+- Table rows become lines, with cells joined by " | ".
+- Merged cells are de-duplicated (python-docx repeats them per column).
+- Not extracted: nested tables, headers and footers, text boxes, images.
+- Corrupt files, zero-byte files, ZIP archives that are not DOCX files and
+  documents with no text are rejected with a `ValueError`.
+## 6. Upload validation and unified ingestion
+**Validation** (`app/ingestion/validation.py`) runs on the raw filename and
+size, before anything is written to disk.
+- Extension allow-list: `.txt`, `.pdf`, `.docx`, case-insensitive.
+- Size limit: `MAX_UPLOAD_BYTES` in settings, default 10 MB, overridable via
+  `.env`. Zero-byte uploads are rejected.
+- `sanitize_filename` strips directory parts (both `/` and `\`), removes
+  control and Windows-reserved characters, trims spaces and dots, rejects
+  reserved device names (CON, NUL, COM1, ...) and caps the length while
+  keeping the extension. This prevents path traversal.
+- Extension checks look at the file name only. Content is verified by the
+  loaders, which reject files that are not really a PDF or DOCX.
+**Unified ingestion** (`app/ingestion/ingest.py`). `ingest_document(path)`
+picks the loader from a `LOADERS` registry keyed by extension. A new format
+is one loader plus one registry line. A test asserts that the registry and
+the validation allow-list list the same extensions.
+## 7. Known gaps
 - No Urdu or other non-Latin PDF test yet. It needs an embedded font in the
   generated test PDF. Accented Latin text is tested.
-- No DOCX loader yet.
+- Whether the heavy PyMuPDF dependencies can be trimmed is untested.
+- `validate_upload` and `ingest_document` are not yet wired into an API
+  endpoint.
+- No OCR for scanned PDFs (by design, they are rejected).
